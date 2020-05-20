@@ -1,7 +1,7 @@
 """Provide classes to perform private training and private prediction with
 logistic regression"""
 import tensorflow as tf
-
+from tensorflow.examples.tutorials.mnist import input_data
 import tf_encrypted as tfe
 
 
@@ -93,6 +93,38 @@ class DataOwner:
     @property
     def initializer(self):
         return tf.group(self.train_initializer, self.test_initializer)
+
+    @tfe.local_computation
+    def provide_train_dataset(self):
+        mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
+        train_data = mnist.train.images[:self.training_set_size, :]
+        train_labels = mnist.train.labels[:self.training_set_size]
+        dataset = tf.data.Dataset.from_tensor_slices((train_data, train_labels))
+        dataset = dataset.repeat()
+        dataset = dataset.batch(self.batch_size)
+        # iterator = dataset.make_one_shot_iterator()
+        train_set_iterator = dataset.make_initializable_iterator()
+        self.train_initializer = train_set_iterator.initializer
+        x, y = train_set_iterator.get_next()
+        x = tf.reshape(x, [self.batch_size, self.num_features])
+        y = tf.reshape(y, [self.batch_size, 1])
+        return x, y
+
+    @tfe.local_computation
+    def provide_test_dataset(self):
+        mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
+        test_data = mnist.test.images[:self.test_set_size, :]
+        test_labels = mnist.test.labels[:self.test_set_size]
+        dataset = tf.data.Dataset.from_tensor_slices((test_data, test_labels))
+        dataset = dataset.repeat()
+        dataset = dataset.batch(self.batch_size)
+        # iterator = dataset.make_one_shot_iterator()
+        test_set_iterator = dataset.make_initializable_iterator()
+        self.test_initializer = test_set_iterator.initializer
+        x, y = test_set_iterator.get_next()
+        x = tf.reshape(x, [self.batch_size, self.num_features])
+        y = tf.reshape(y, [self.batch_size, 1])
+        return x, y
 
     @tfe.local_computation
     def provide_training_data(self):
