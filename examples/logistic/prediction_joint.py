@@ -1,7 +1,7 @@
 """Private prediction on combined features from several clients"""
 import tf_encrypted as tfe
-from common import LogisticRegression
-from common import PredictionClient
+from examples.logistic.common import LogisticRegression
+from examples.logistic.common import PredictionClient
 
 num_features = 10
 
