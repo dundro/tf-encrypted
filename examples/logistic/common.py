@@ -13,7 +13,7 @@ class LogisticRegression:
             tf.random_uniform([num_features, 10], -0.01, 0.01)
         )
         self.w_masked = tfe.mask(self.w)
-        self.b = tfe.define_private_variable(tf.zeros([1]))
+        self.b = tfe.define_private_variable(tf.zeros([10]))
         self.b_masked = tfe.mask(self.b)
 
     @property
@@ -31,7 +31,7 @@ class LogisticRegression:
         batch_size = x.shape.as_list()[0]
         with tf.name_scope("backward"):
             dw = tfe.matmul(tfe.transpose(x), dy) / batch_size
-            db = tfe.reduce_sum(dy) / batch_size
+            db = tfe.reduce_sum(dy,axis=0) / batch_size
             assign_ops = [
                 tfe.assign(self.w, self.w - dw * learning_rate),
                 tfe.assign(self.b, self.b - db * learning_rate),
@@ -59,22 +59,32 @@ class LogisticRegression:
     def evaluate(self, sess, x, y, data_owner):
         """Return the accuracy"""
 
+        def decode(t):
+            return tf.where(tf.equal(t, 1))
+
         def print_accuracy(y_hat, y) -> tf.Operation:
             with tf.name_scope("print-accuracy"):
                 correct_prediction = tf.equal(tf.round(y_hat), y)
                 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+                print_vals = tf.print(tf.stack([y, tf.round(y_hat)], axis=1), summarize=-1)
+
                 print_op = tf.print(
-                    "Accuracy on {}:".format(data_owner.player_name), accuracy
+                    "Accuracy on {}:".format(data_owner.player_name), accuracy, "\n"
                 )
-                return print_op
+
+                return tf.group(print_vals, print_op)
+                # return print_op
 
         with tf.name_scope("evaluate"):
             y_hat = self.forward(x)
+
             print_accuracy_op = tfe.define_output(
                 data_owner.player_name, [y_hat, y], print_accuracy
             )
 
         sess.run(print_accuracy_op, tag="evaluate")
+        # sess.run(print_samples, tag="evaluate")
 
 
 class DataOwner:
@@ -109,7 +119,7 @@ class DataOwner:
             iterator = dataset.make_initializable_iterator()
             self.train_initializer = iterator.initializer
         else:
-            dataset = self.get_test_data_fn().repeat()
+            dataset = self.get_test_data_fn()
             dataset = dataset.batch(self.batch_size)
             iterator = dataset.make_initializable_iterator()
             self.test_initializer = iterator.initializer

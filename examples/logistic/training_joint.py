@@ -6,9 +6,9 @@ from tensorflow.examples.tutorials.mnist import input_data
 
 num_features = 784
 alice_num_features = 392
-training_set_size = 1000
+training_set_size = 50000
 test_set_size = 100
-batch_size = 10
+batch_size = 100
 num_batches = (training_set_size // batch_size) * 10
 
 
